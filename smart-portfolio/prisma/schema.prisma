@@ -1,0 +1,142 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  email         String    @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  portfolios Portfolio[]
+  sharedAccess SharedPortfolioAccess[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.String
+  access_token      String? @db.String
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.String
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Portfolio {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  userId      String   @db.ObjectId
+  visibility  PortfolioVisibility @default(PRIVATE)
+  cash        Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings     Holding[]
+  sharedAccess SharedPortfolioAccess[]
+  insights     PortfolioInsight[]
+
+  @@map("portfolios")
+}
+
+model Holding {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  portfolioId String   @db.ObjectId
+  symbol      String
+  quantity    Float
+  avgPrice    Float?
+  currentPrice Float?
+  sector      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@map("holdings")
+}
+
+model SharedPortfolioAccess {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  portfolioId String   @db.ObjectId
+  userId      String?  @db.ObjectId
+  token       String   @unique
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime?
+  isRevoked   Boolean  @default(false)
+  viewCount   Int      @default(0)
+  lastViewedAt DateTime?
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  accessLogs TokenAccessLog[]
+
+  @@map("shared_portfolio_access")
+}
+
+model TokenAccessLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tokenId   String   @db.ObjectId
+  ipAddress String?
+  userAgent String?
+  viewedAt  DateTime @default(now())
+
+  token SharedPortfolioAccess @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@map("token_access_logs")
+}
+
+model PortfolioInsight {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  portfolioId String   @db.ObjectId
+  summary     String
+  diversification String
+  riskAnalysis String
+  thesis      String
+  chatHistory Json[]   @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@map("portfolio_insights")
+}
+
+enum PortfolioVisibility {
+  PRIVATE
+  PUBLIC
+  SMART_SHARED
+}
