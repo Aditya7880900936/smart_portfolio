@@ -9,20 +9,30 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  email         String    @unique
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  email         String     @unique
   name          String?
   emailVerified DateTime?
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  accounts  Account[]
-  sessions  Session[]
-  portfolios Portfolio[]
-  sharedAccess SharedPortfolioAccess[]
+  accounts      Account[]
+  sessions      Session[]
+  portfolios    Portfolio[]
+  sharedAccess  SharedPortfolioAccess[]
+  credential    Credential?
 
   @@map("users")
+}
+
+model Credential {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId   String   @unique @db.ObjectId
+  password String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credentials")
 }
 
 model Account {
